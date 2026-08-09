@@ -56,6 +56,10 @@
 #define APP_COPY_AUV3 0
 #define APP_SIGNAL_VECTOR_SIZE 64
 
+#if defined APP_API && defined _WIN32
+  #define APP_DEFAULT_AUDIO_DRIVER 1 // ASIO
+#endif
+
 #define ROBOTO_FN "Roboto-Regular.ttf"
 #define MICHROMA_FN "Michroma-Regular.ttf"
 
