@@ -9,6 +9,9 @@ on:
 env:
   PROJECT_NAME: NeuralAmpModeler
 
+permissions:
+  contents: write
+
 jobs:
   create_release:
     name: Create release
