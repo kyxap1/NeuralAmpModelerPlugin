@@ -5,12 +5,15 @@ on:
   pull_request:
   schedule:
     - cron: '0 8 * * 2'
-  #push:
-    # tags:
-    #   - "v*"
+  push:
+    tags:
+      - "v*"
 
 env:
   PROJECT_NAME: NeuralAmpModeler
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -48,11 +51,40 @@ jobs:
         ./makedist-mac.sh full zip
       shell: bash
 
+    - name: Build pkg installer
+      run: |
+        cd ${{env.PROJECT_NAME}}/${{matrix.build_dir}}
+        ZIP=$(ls out/*-mac.zip)
+        VERSION=$(basename "$ZIP" | sed -E 's/.*-v(.*)-mac\.zip/\1/')
+        unzip -q "$ZIP" -d unzipped
+        mkdir -p pkgroot/Library/Audio/Plug-Ins/VST3 pkgroot/Library/Audio/Plug-Ins/Components pkgroot/Applications
+        cp -R unzipped/${{env.PROJECT_NAME}}.vst3 pkgroot/Library/Audio/Plug-Ins/VST3/
+        cp -R unzipped/${{env.PROJECT_NAME}}.component pkgroot/Library/Audio/Plug-Ins/Components/
+        cp -R unzipped/${{env.PROJECT_NAME}}.app pkgroot/Applications/
+        pkgbuild --root pkgroot \
+          --identifier dev.kyxap1.${{env.PROJECT_NAME}} \
+          --version "$VERSION" \
+          --install-location / \
+          "out/${{env.PROJECT_NAME}}-v${VERSION}-mac.pkg"
+      shell: bash
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{env.PROJECT_NAME}}-${{matrix.artifact_ext}}
         path: ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out
+
+    - name: Publish GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${{ github.ref_name }}" \
+          ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/*.zip \
+          ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/*.pkg \
+          --title "${{ github.ref_name }}" \
+          --generate-notes
+      shell: bash
 
   # test:
   #   name: Test Native
